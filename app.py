@@ -1,6 +1,6 @@
 import streamlit as st
 
-from src.data_loader import DTYPE_MAP, TXT_COLUMNS, load_stores, parse_report
+from src.data_loader import load_stores, parse_report
 from src.metrics import filter_operational, nd00_analysis, site_summary
 from src.ui_components import (
     render_charts,
