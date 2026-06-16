@@ -11,31 +11,31 @@ from src.ui_components import (
     render_summary_table,
 )
 
-st.set_page_config(page_title="Safety Stock Checking", layout="wide")
+st.set_page_config(page_title="安全庫存檢查", layout="wide")
 
-st.title("Safety Stock Checking — RP Type & ND00 Alert Report")
+st.title("安全庫存檢查 — RP 類型與 ND00 警示報告")
 st.markdown(
-    "Upload a ZRPMM0099 report (tab-separated `.TXT`) to see per-site SKU and stock totals "
-    "by RP Type (RF / ND), plus **ND00** alerts for unreviewed born-ND items that still hold stock."
+    "上載 ZRPMM0099 報表（Tab 分隔的 `.TXT`），即可查看各分店按 RP 類型（RF / ND）的 SKU 與庫存總數，"
+    "以及仍持有庫存之未審核天生 ND 項目的 **ND00** 警示。"
 )
 
 stores = load_stores()
 
 uploaded = st.sidebar.file_uploader(
-    "Upload ZRPMM0099 report (.TXT)",
+    "上載 ZRPMM0099 報表（.TXT）",
     type=["txt"],
-    help="Expected filename: ZRPMM0099_YYYYMMDD.TXT",
+    help="預期檔案名稱：ZRPMM0099_YYYYMMDD.TXT",
 )
 
 if uploaded is None:
-    st.info("Upload a ZRPMM0099 report to begin.")
+    st.info("請上載 ZRPMM0099 報表以開始。")
     st.stop()
 
 try:
     file_bytes = uploaded.getvalue()
     df = parse_report(file_bytes)
 except Exception as e:
-    st.error(f"Failed to parse report: {e}")
+    st.error(f"無法解析報表：{e}")
     st.stop()
 
 len_full = len(df)
@@ -53,14 +53,14 @@ per_site_nd00, detail_nd00 = nd00_analysis(df_op, stores)
 
 side_cols = st.sidebar.columns(2)
 report_date_str = uploaded.name.replace("ZRPMM0099_", "").replace(".TXT", "") if "_" in uploaded.name else ""
-side_cols[0].metric("Report date", report_date_str)
-side_cols[1].metric("Rows loaded", f"{len_full:,}")
+side_cols[0].metric("報表日期", report_date_str)
+side_cols[1].metric("已載入行數", f"{len_full:,}")
 
 regions = sorted(stores["Regional"].dropna().unique())
 oms = sorted(stores["OM"].dropna().unique())
 
-sel_regions = st.sidebar.multiselect("Filter Region", options=regions, default=None)
-sel_oms = st.sidebar.multiselect("Filter OM", options=oms, default=None)
+sel_regions = st.sidebar.multiselect("篩選地區", options=regions, default=None)
+sel_oms = st.sidebar.multiselect("篩選 OM", options=oms, default=None)
 
 if sel_regions:
     summary = summary[summary["Regional"].isin(sel_regions)]
@@ -75,7 +75,7 @@ st.divider()
 render_nd00_aggregate(per_site_nd00)
 
 st.divider()
-st.subheader("Per-Site Summary (RF / ND)")
+st.subheader("分店摘要（RF / ND）")
 render_summary_table(summary)
 
 st.divider()
@@ -87,8 +87,8 @@ render_nd00_section(per_site_nd00, detail_nd00)
 st.divider()
 st.markdown(
     "<div style='text-align: center; color: #888; font-size: 0.85rem; line-height: 1.6;'>"
-    "Data source: ZRPMM0099 stock report  ·  Store master: stores-template.csv (bundled)<br>"
-    "Developed by Ricky Yue  ·  只限 RP Team 使用"
+    "資料來源：ZRPMM0099 庫存報表  ·  分店主檔：stores-template.csv（內置）<br>"
+    "由 Ricky Yue 開發  ·  只限 RP Team 使用"
     "</div>",
     unsafe_allow_html=True,
 )

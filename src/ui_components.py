@@ -11,13 +11,13 @@ def render_kpis(summary: pd.DataFrame, nd00_count: int):
     nd_stock_total = int(summary["ND_Stock"].sum())
 
     cols = st.columns(5)
-    cols[0].metric("Operational Sites", total_sites)
-    cols[1].metric("RF SKU Count", f"{rf_sku_total:,}")
-    cols[2].metric("RF Stock (units)", f"{rf_stock_total:,}")
-    cols[3].metric("ND SKU Count", f"{nd_sku_total:,}")
-    cols[4].metric("ND Stock (units)", f"{nd_stock_total:,}")
+    cols[0].metric("營運分店數", total_sites)
+    cols[1].metric("RF SKU 數量", f"{rf_sku_total:,}")
+    cols[2].metric("RF 庫存（件）", f"{rf_stock_total:,}")
+    cols[3].metric("ND SKU 數量", f"{nd_sku_total:,}")
+    cols[4].metric("ND 庫存（件）", f"{nd_stock_total:,}")
 
-    st.caption(f"ND00 alerts: {nd00_count} SKU(s) flagged (born-ND / unreviewed) — expand the ND00 section below for details.")
+    st.caption(f"ND00 警示：已標記 {nd00_count} 個 SKU（天生 ND／未審核）— 展開下方 ND00 區段查看詳情。")
 
 
 def render_summary_table(df: pd.DataFrame):
@@ -26,41 +26,41 @@ def render_summary_table(df: pd.DataFrame):
 
     display = display.rename(
         columns={
-            "SITE": "Site",
-            "Shop": "Shop",
-            "Regional": "Regional",
+            "SITE": "分店",
+            "Shop": "店名",
+            "Regional": "地區",
             "OM": "OM",
-            "Class1": "Class 1",
-            "Class2": "Class 2",
-            "Type": "Type",
-            "RF_SKU_count": "RF SKUs",
-            "RF_Stock": "RF Stock",
-            "ND_SKU_count": "ND SKUs",
-            "ND_Stock": "ND Stock",
+            "Class1": "級別 1",
+            "Class2": "級別 2",
+            "Type": "類型",
+            "RF_SKU_count": "RF SKU",
+            "RF_Stock": "RF 庫存",
+            "ND_SKU_count": "ND SKU",
+            "ND_Stock": "ND 庫存",
         }
     )
 
     st.dataframe(
         display,
         column_config={
-            "RF Stock": st.column_config.NumberColumn(format="%,.0f"),
-            "ND Stock": st.column_config.NumberColumn(format="%,.0f"),
+            "RF 庫存": st.column_config.NumberColumn(format="%,.0f"),
+            "ND 庫存": st.column_config.NumberColumn(format="%,.0f"),
         },
         use_container_width=True,
         hide_index=True,
     )
 
     csv = display.to_csv(index=False).encode("utf-8-sig")
-    st.download_button("Download Summary CSV", data=csv, file_name="site_summary.csv", mime="text/csv")
+    st.download_button("下載摘要 CSV", data=csv, file_name="site_summary.csv", mime="text/csv")
 
 
 def render_charts(summary: pd.DataFrame, nd00_per_site: pd.DataFrame):
     col_left, col_right = st.columns(2)
 
     with col_left:
-        rf_nd = summary[["Shop", "RF_Stock", "ND_Stock"]].melt(id_vars="Shop", var_name="RP Type", value_name="Stock")
-        rf_nd["RP Type"] = rf_nd["RP Type"].replace({"RF_Stock": "RF", "ND_Stock": "ND"})
-        fig1 = px.bar(rf_nd, x="Shop", y="Stock", color="RP Type", title="Stock by Site and RP Type", barmode="group")
+        rf_nd = summary[["Shop", "RF_Stock", "ND_Stock"]].melt(id_vars="Shop", var_name="RP 類型", value_name="庫存")
+        rf_nd["RP 類型"] = rf_nd["RP 類型"].replace({"RF_Stock": "RF", "ND_Stock": "ND"})
+        fig1 = px.bar(rf_nd, x="Shop", y="庫存", color="RP 類型", title="各分店按 RP 類型之庫存", barmode="group")
         fig1.update_layout(xaxis_tickangle=-45, height=500)
         st.plotly_chart(fig1, use_container_width=True)
 
@@ -68,41 +68,44 @@ def render_charts(summary: pd.DataFrame, nd00_per_site: pd.DataFrame):
         top_n = 20
         nd00_sites = nd00_per_site[nd00_per_site["Total ND00"] > 0].sort_values("Total ND00", ascending=False).head(top_n)
         if not nd00_sites.empty:
+            nd00_sites_disp = nd00_sites.rename(
+                columns={"Stock only": "僅有庫存", "Planned only": "僅有計劃到貨", "Both": "兩者皆有"}
+            )
             fig2 = px.bar(
-                nd00_sites,
+                nd00_sites_disp,
                 x="Shop",
-                y=["Stock only", "Planned only", "Both"],
-                title=f"ND00 Breakdown — Top {top_n} Sites",
+                y=["僅有庫存", "僅有計劃到貨", "兩者皆有"],
+                title=f"ND00 分佈 — 前 {top_n} 個分店",
                 barmode="stack",
-                color_discrete_map={"Stock only": "#ef553b", "Planned only": "#636efa", "Both": "#00cc96"},
+                color_discrete_map={"僅有庫存": "#ef553b", "僅有計劃到貨": "#636efa", "兩者皆有": "#00cc96"},
             )
             fig2.update_layout(xaxis_tickangle=-45, height=500)
             st.plotly_chart(fig2, use_container_width=True)
 
 
 def render_nd00_section(per_site: pd.DataFrame, detail: pd.DataFrame):
-    st.subheader("ND00 Detail & Filters")
+    st.subheader("ND00 明細與篩選")
 
     if detail.empty:
-        st.info("No ND00 (born-ND / unreviewed) records found for operational sites.")
+        st.info("未找到營運分店的 ND00（天生 ND／未審核）記錄。")
         return
 
-    with st.expander("2×2 Breakdown by Site", expanded=True):
+    with st.expander("各分店 2×2 分佈", expanded=True):
         display_site = per_site[per_site["Total ND00"] > 0][
             ["SITE", "Shop", "Regional", "OM", "Stock only", "Planned only", "Both", "Neither", "Total ND00"]
         ].copy()
-        display_site.columns = ["Site", "Shop", "Regional", "OM", "Stock only", "Planned only", "Both", "Neither", "Total"]
+        display_site.columns = ["分店", "店名", "地區", "OM", "僅有庫存", "僅有計劃到貨", "兩者皆有", "兩者皆無", "總數"]
         st.dataframe(display_site, use_container_width=True, hide_index=True)
 
-    with st.expander("Filters & Detail Table", expanded=True):
+    with st.expander("篩選與明細表", expanded=True):
         col1, col2, col3 = st.columns(3)
         regions = sorted(detail["Regional"].dropna().unique())
         oms = sorted(detail["OM"].dropna().unique())
         sites = sorted(detail["SITE"].unique())
 
-        sel_region = col1.multiselect("Regional", options=regions, default=None)
+        sel_region = col1.multiselect("地區", options=regions, default=None)
         sel_om = col2.multiselect("OM", options=oms, default=None)
-        sel_site = col3.multiselect("Site", options=sites, default=None)
+        sel_site = col3.multiselect("分店", options=sites, default=None)
 
         filtered = detail.copy()
         if sel_region:
@@ -112,19 +115,36 @@ def render_nd00_section(per_site: pd.DataFrame, detail: pd.DataFrame):
         if sel_site:
             filtered = filtered[filtered["SITE"].isin(sel_site)]
 
+        filtered_disp = filtered.rename(
+            columns={
+                "SITE": "分店",
+                "Shop": "店名",
+                "Regional": "地區",
+                "OM": "OM",
+                "SKU": "SKU",
+                "RP Type": "RP 類型",
+                "Sasa ABC": "Sasa ABC",
+                "SKU status": "SKU 狀態",
+                "Stock on hand": "現有庫存",
+                "Planned receiving": "計劃到貨",
+                "Sasa Launch Date": "Sasa 推出日期",
+                "Bucket": "分類",
+            }
+        )
+
         st.dataframe(
-            filtered,
+            filtered_disp,
             column_config={
-                "Stock on hand": st.column_config.NumberColumn(format="%,.0f"),
-                "Planned receiving": st.column_config.NumberColumn(format="%,.0f"),
-                "Sasa Launch Date": st.column_config.DateColumn(format="YYYY-MM-DD"),
+                "現有庫存": st.column_config.NumberColumn(format="%,.0f"),
+                "計劃到貨": st.column_config.NumberColumn(format="%,.0f"),
+                "Sasa 推出日期": st.column_config.DateColumn(format="YYYY-MM-DD"),
             },
             use_container_width=True,
             hide_index=True,
         )
 
         csv_detail = filtered.to_csv(index=False).encode("utf-8-sig")
-        st.download_button("Download Detail CSV", data=csv_detail, file_name="nd00_detail.csv", mime="text/csv")
+        st.download_button("下載明細 CSV", data=csv_detail, file_name="nd00_detail.csv", mime="text/csv")
 
 
 def render_nd00_aggregate(per_site: pd.DataFrame):
@@ -134,21 +154,21 @@ def render_nd00_aggregate(per_site: pd.DataFrame):
     both = per_site["Both"].sum()
     neither = per_site["Neither"].sum()
 
-    st.subheader("ND00 Alert Summary")
+    st.subheader("ND00 警示摘要")
     cols = st.columns(5)
-    cols[0].metric("Total ND00", total)
-    cols[1].metric("With Stock Only", stock_only)
-    cols[2].metric("With Planned Only", planned_only)
-    cols[3].metric("With Both", both)
-    cols[4].metric("With Neither", neither)
+    cols[0].metric("ND00 總數", total)
+    cols[1].metric("僅有庫存", stock_only)
+    cols[2].metric("僅有計劃到貨", planned_only)
+    cols[3].metric("兩者皆有", both)
+    cols[4].metric("兩者皆無", neither)
 
     st.caption(
-        "**ND00** = NDRF Code ND00 (born-ND, Buyer has not reviewed). "
-        "These SKUs should theoretically not hold stock or have planned receipts. "
-        "The counts above highlight potential missed reviews."
+        "**ND00** = NDRF 代碼 ND00（天生 ND，採購尚未審核）。"
+        "這些 SKU 理論上不應持有庫存或有計劃到貨。"
+        "上方數字反映可能遺漏的審核。"
     )
 
 
 def render_excluded_note(excluded_count: int, excluded_sites: list[str]):
     if excluded_count > 0:
-        st.sidebar.caption(f"Excluded {excluded_count:,} rows from non-operational sites: {', '.join(excluded_sites)}")
+        st.sidebar.caption(f"已剔除來自非營運分店的 {excluded_count:,} 行：{', '.join(excluded_sites)}")
