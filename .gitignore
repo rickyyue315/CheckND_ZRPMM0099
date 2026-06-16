@@ -3,7 +3,6 @@
 *.txt
 !requirements.txt
 !packages.txt
-!runtime.txt
 
 # Python
 __pycache__/
