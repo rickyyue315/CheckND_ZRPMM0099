@@ -1,6 +1,15 @@
+import io
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+
+
+def _to_excel_bytes(df: pd.DataFrame) -> bytes:
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Sheet1")
+    return buffer.getvalue()
 
 
 def render_kpis(summary: pd.DataFrame, nd00_count: int):
@@ -50,8 +59,8 @@ def render_summary_table(df: pd.DataFrame):
         hide_index=True,
     )
 
-    csv = display.to_csv(index=False).encode("utf-8-sig")
-    st.download_button("下載摘要 CSV", data=csv, file_name="site_summary.csv", mime="text/csv")
+    excel = _to_excel_bytes(display)
+    st.download_button("下載摘要 Excel", data=excel, file_name="site_summary.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 def render_charts(summary: pd.DataFrame, nd00_per_site: pd.DataFrame):
@@ -143,8 +152,8 @@ def render_nd00_section(per_site: pd.DataFrame, detail: pd.DataFrame):
             hide_index=True,
         )
 
-        csv_detail = filtered.to_csv(index=False).encode("utf-8-sig")
-        st.download_button("下載明細 CSV", data=csv_detail, file_name="nd00_detail.csv", mime="text/csv")
+        excel_detail = _to_excel_bytes(filtered)
+        st.download_button("下載明細 Excel", data=excel_detail, file_name="nd00_detail.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 def render_nd00_aggregate(per_site: pd.DataFrame):
