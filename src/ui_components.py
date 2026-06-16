@@ -54,7 +54,7 @@ def render_summary_table(df: pd.DataFrame):
     st.download_button("Download Summary CSV", data=csv, file_name="site_summary.csv", mime="text/csv")
 
 
-def render_charts(summary: pd.DataFrame):
+def render_charts(summary: pd.DataFrame, nd00_per_site: pd.DataFrame):
     col_left, col_right = st.columns(2)
 
     with col_left:
@@ -66,7 +66,7 @@ def render_charts(summary: pd.DataFrame):
 
     with col_right:
         top_n = 20
-        nd00_sites = summary[summary["Total ND00"] > 0].sort_values("Total ND00", ascending=False).head(top_n)
+        nd00_sites = nd00_per_site[nd00_per_site["Total ND00"] > 0].sort_values("Total ND00", ascending=False).head(top_n)
         if not nd00_sites.empty:
             fig2 = px.bar(
                 nd00_sites,

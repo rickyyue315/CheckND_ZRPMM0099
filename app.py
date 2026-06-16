@@ -79,7 +79,7 @@ st.subheader("Per-Site Summary (RF / ND)")
 render_summary_table(summary)
 
 st.divider()
-render_charts(summary)
+render_charts(summary, per_site_nd00)
 
 st.divider()
 render_nd00_section(per_site_nd00, detail_nd00)
