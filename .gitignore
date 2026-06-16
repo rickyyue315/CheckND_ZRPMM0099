@@ -2,6 +2,7 @@
 *.TXT
 *.txt
 !requirements.txt
+!packages.txt
 
 # Python
 __pycache__/
