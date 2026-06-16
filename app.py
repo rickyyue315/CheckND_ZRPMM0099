@@ -84,4 +84,11 @@ render_charts(summary)
 st.divider()
 render_nd00_section(per_site_nd00, detail_nd00)
 
-st.caption("Data source: ZRPMM0099 stock report  ·  Store master: stores-template.csv (bundled)")
+st.divider()
+st.markdown(
+    "<div style='text-align: center; color: #888; font-size: 0.85rem; line-height: 1.6;'>"
+    "Data source: ZRPMM0099 stock report  ·  Store master: stores-template.csv (bundled)<br>"
+    "Developed by Ricky Yue  ·  只限 RP Team 使用"
+    "</div>",
+    unsafe_allow_html=True,
+)
