@@ -1,6 +1,7 @@
 # Large report files (uploaded via the app, not committed)
 *.TXT
 *.txt
+!requirements.txt
 
 # Python
 __pycache__/
