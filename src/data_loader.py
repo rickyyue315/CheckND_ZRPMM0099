@@ -58,7 +58,7 @@ def _clean_sap_numeric(series: pd.Series) -> pd.Series:
 
 @st.cache_data
 def load_stores():
-    return pd.read_csv("stores-template.csv")
+    return pd.read_csv("stores-template.csv", encoding="utf-8-sig")
 
 
 @st.cache_data
