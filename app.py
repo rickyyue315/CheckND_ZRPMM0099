@@ -1,13 +1,13 @@
 import streamlit as st
 
 from src.data_loader import load_stores, parse_report
-from src.metrics import filter_operational, nd00_analysis, site_summary
+from src.metrics import filter_operational, nd_analysis, site_summary
 from src.ui_components import (
     render_charts,
     render_excluded_note,
     render_kpis,
-    render_nd00_aggregate,
-    render_nd00_section,
+    render_nd_aggregate,
+    render_nd_section,
     render_summary_table,
 )
 
@@ -49,7 +49,7 @@ excluded_sites = sorted(set(sites_in_txt) - set(stores["Site"].unique()))
 render_excluded_note(excluded, excluded_sites)
 
 summary = site_summary(df_op, stores)
-per_site_nd00, detail_nd00 = nd00_analysis(df_op, stores)
+per_site_nd, detail_nd = nd_analysis(df_op, stores)
 
 side_cols = st.sidebar.columns(2)
 report_date_str = uploaded.name.replace("ZRPMM0099_", "").replace(".TXT", "") if "_" in uploaded.name else ""
@@ -69,20 +69,20 @@ if sel_oms:
 
 st.divider()
 
-render_kpis(summary, per_site_nd00["Total ND00"].sum())
+render_kpis(summary, per_site_nd["Total ND"].sum())
 
 st.divider()
-render_nd00_aggregate(per_site_nd00)
+render_nd_aggregate(per_site_nd)
 
 st.divider()
 st.subheader("分店摘要（RF / ND）")
 render_summary_table(summary)
 
 st.divider()
-render_charts(summary, per_site_nd00)
+render_charts(summary, per_site_nd)
 
 st.divider()
-render_nd00_section(per_site_nd00, detail_nd00)
+render_nd_section(per_site_nd, detail_nd)
 
 st.divider()
 st.markdown(

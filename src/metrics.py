@@ -28,11 +28,8 @@ def site_summary(df: pd.DataFrame, stores: pd.DataFrame) -> pd.DataFrame:
     return result.sort_values("Shop").reset_index(drop=True)
 
 
-def nd00_analysis(df: pd.DataFrame, stores: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def nd_analysis(df: pd.DataFrame, stores: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     ndrf = df["NDRF Code"].str.strip()
-    # ND00 用於各分店 ND00 警示分佈與圖表
-    nd00 = df[ndrf == "ND00"].copy()
-    # 明細改為涵蓋所有 ND 開頭代碼，方便日後直接於 Excel 篩選任一 ND 代碼
     nd_all = df[ndrf.str.startswith("ND")].copy()
 
     detail_cols = [
@@ -59,21 +56,21 @@ def nd00_analysis(df: pd.DataFrame, stores: pd.DataFrame) -> tuple[pd.DataFrame,
             return "Planned only"
         return "Neither"
 
-    # 各分店 ND00 分佈（僅 ND00）
-    if nd00.empty:
+    # 各分店 ND 代碼分佈（涵蓋所有 ND 開頭代碼）
+    if nd_all.empty:
         per_site = meta.copy()
-        for c in ["Both", "Stock only", "Planned only", "Neither", "Total ND00"]:
+        for c in ["Both", "Stock only", "Planned only", "Neither", "Total ND"]:
             per_site[c] = 0
     else:
-        nd00["Bucket"] = nd00.apply(classify, axis=1)
-        per_site = nd00.groupby(["SITE", "Bucket"]).size().unstack(fill_value=0).reset_index()
+        nd_all["Bucket"] = nd_all.apply(classify, axis=1)
+        per_site = nd_all.groupby(["SITE", "Bucket"]).size().unstack(fill_value=0).reset_index()
         for col in ["Both", "Stock only", "Planned only", "Neither"]:
             if col not in per_site.columns:
                 per_site[col] = 0
-        per_site["Total ND00"] = per_site[["Both", "Stock only", "Planned only", "Neither"]].sum(axis=1)
+        per_site["Total ND"] = per_site[["Both", "Stock only", "Planned only", "Neither"]].sum(axis=1)
         per_site = meta.merge(per_site, on="SITE", how="left").fillna(0)
 
-    for col in ["Both", "Stock only", "Planned only", "Neither", "Total ND00"]:
+    for col in ["Both", "Stock only", "Planned only", "Neither", "Total ND"]:
         per_site[col] = per_site[col].astype(int)
 
     # 明細：涵蓋所有 ND 開頭代碼，最後一欄為 ND Code 以便直接篩選

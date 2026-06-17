@@ -12,7 +12,7 @@ def _to_excel_bytes(df: pd.DataFrame) -> bytes:
     return buffer.getvalue()
 
 
-def render_kpis(summary: pd.DataFrame, nd00_count: int):
+def render_kpis(summary: pd.DataFrame, nd_count: int):
     total_sites = len(summary)
     rf_sku_total = int(summary["RF_SKU_count"].sum())
     rf_stock_total = int(summary["RF_Stock"].sum())
@@ -26,7 +26,7 @@ def render_kpis(summary: pd.DataFrame, nd00_count: int):
     cols[3].metric("ND SKU 數量", f"{nd_sku_total:,}")
     cols[4].metric("ND 庫存（件）", f"{nd_stock_total:,}")
 
-    st.caption(f"ND00 警示：已標記 {nd00_count} 個 SKU（天生 ND／未審核）— 展開下方 ND00 區段查看詳情。")
+    st.caption(f"ND 代碼警示：已標記 {nd_count} 個 SKU — 展開下方「ND 代碼明細與篩選」區段查看詳情。")
 
 
 def render_summary_table(df: pd.DataFrame):
@@ -63,7 +63,7 @@ def render_summary_table(df: pd.DataFrame):
     st.download_button("下載摘要 Excel", data=excel, file_name="site_summary.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
-def render_charts(summary: pd.DataFrame, nd00_per_site: pd.DataFrame):
+def render_charts(summary: pd.DataFrame, nd_per_site: pd.DataFrame):
     col_left, col_right = st.columns(2)
 
     with col_left:
@@ -75,16 +75,16 @@ def render_charts(summary: pd.DataFrame, nd00_per_site: pd.DataFrame):
 
     with col_right:
         top_n = 20
-        nd00_sites = nd00_per_site[nd00_per_site["Total ND00"] > 0].sort_values("Total ND00", ascending=False).head(top_n)
-        if not nd00_sites.empty:
-            nd00_sites_disp = nd00_sites.rename(
+        nd_sites = nd_per_site[nd_per_site["Total ND"] > 0].sort_values("Total ND", ascending=False).head(top_n)
+        if not nd_sites.empty:
+            nd_sites_disp = nd_sites.rename(
                 columns={"Stock only": "僅有庫存", "Planned only": "僅有計劃到貨", "Both": "兩者皆有"}
             )
             fig2 = px.bar(
-                nd00_sites_disp,
+                nd_sites_disp,
                 x="Shop",
                 y=["僅有庫存", "僅有計劃到貨", "兩者皆有"],
-                title=f"ND00 分佈 — 前 {top_n} 個分店",
+                title=f"ND 代碼分佈 — 前 {top_n} 個分店",
                 barmode="stack",
                 color_discrete_map={"僅有庫存": "#ef553b", "僅有計劃到貨": "#636efa", "兩者皆有": "#00cc96"},
             )
@@ -92,32 +92,36 @@ def render_charts(summary: pd.DataFrame, nd00_per_site: pd.DataFrame):
             st.plotly_chart(fig2, use_container_width=True)
 
 
-def render_nd00_section(per_site: pd.DataFrame, detail: pd.DataFrame):
-    st.subheader("ND00 明細與篩選")
+def render_nd_section(per_site: pd.DataFrame, detail: pd.DataFrame):
+    st.subheader("ND 代碼明細與篩選")
 
     if detail.empty:
-        st.info("未找到營運分店的 ND00（天生 ND／未審核）記錄。")
+        st.info("未找到營運分店的 ND 代碼記錄。")
         return
 
     with st.expander("各分店 2×2 分佈", expanded=True):
-        display_site = per_site[per_site["Total ND00"] > 0][
-            ["SITE", "Shop", "Regional", "OM", "Stock only", "Planned only", "Both", "Neither", "Total ND00"]
+        display_site = per_site[per_site["Total ND"] > 0][
+            ["SITE", "Shop", "Regional", "OM", "Stock only", "Planned only", "Both", "Neither", "Total ND"]
         ].copy()
         display_site.columns = ["分店", "店名", "地區", "OM", "僅有庫存", "僅有計劃到貨", "兩者皆有", "兩者皆無", "總數"]
         st.dataframe(display_site, use_container_width=True, hide_index=True)
 
     with st.expander("篩選與明細表", expanded=True):
         st.caption("明細涵蓋所有 ND 開頭代碼（如 ND00、ND01…），最後一欄「ND Code」可直接於 Excel 篩選任一代碼。")
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
+        nd_codes = sorted(detail["ND Code"].dropna().unique())
         regions = sorted(detail["Regional"].dropna().unique())
         oms = sorted(detail["OM"].dropna().unique())
         sites = sorted(detail["SITE"].unique())
 
-        sel_region = col1.multiselect("地區", options=regions, default=None)
-        sel_om = col2.multiselect("OM", options=oms, default=None)
-        sel_site = col3.multiselect("分店", options=sites, default=None)
+        sel_nd_code = col1.multiselect("ND Code", options=nd_codes, default=None)
+        sel_region = col2.multiselect("地區", options=regions, default=None)
+        sel_om = col3.multiselect("OM", options=oms, default=None)
+        sel_site = col4.multiselect("分店", options=sites, default=None)
 
         filtered = detail.copy()
+        if sel_nd_code:
+            filtered = filtered[filtered["ND Code"].isin(sel_nd_code)]
         if sel_region:
             filtered = filtered[filtered["Regional"].isin(sel_region)]
         if sel_om:
@@ -158,23 +162,23 @@ def render_nd00_section(per_site: pd.DataFrame, detail: pd.DataFrame):
         st.download_button("下載明細 Excel", data=excel_detail, file_name="nd00_detail.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
-def render_nd00_aggregate(per_site: pd.DataFrame):
-    total = per_site["Total ND00"].sum()
+def render_nd_aggregate(per_site: pd.DataFrame):
+    total = per_site["Total ND"].sum()
     stock_only = per_site["Stock only"].sum()
     planned_only = per_site["Planned only"].sum()
     both = per_site["Both"].sum()
     neither = per_site["Neither"].sum()
 
-    st.subheader("ND00 警示摘要")
+    st.subheader("ND 代碼警示摘要")
     cols = st.columns(5)
-    cols[0].metric("ND00 總數", total)
+    cols[0].metric("ND 代碼總數", total)
     cols[1].metric("僅有庫存", stock_only)
     cols[2].metric("僅有計劃到貨", planned_only)
     cols[3].metric("兩者皆有", both)
     cols[4].metric("兩者皆無", neither)
 
     st.caption(
-        "**ND00** = NDRF 代碼 ND00（天生 ND，採購尚未審核）。"
+        "**ND 代碼** = NDRF 代碼以 ND 開頭（如 ND00、ND01⋯）。"
         "這些 SKU 理論上不應持有庫存或有計劃到貨。"
         "上方數字反映可能遺漏的審核。"
     )
