@@ -107,6 +107,7 @@ def render_nd00_section(per_site: pd.DataFrame, detail: pd.DataFrame):
         st.dataframe(display_site, use_container_width=True, hide_index=True)
 
     with st.expander("篩選與明細表", expanded=True):
+        st.caption("明細涵蓋所有 ND 開頭代碼（如 ND00、ND01…），最後一欄「ND Code」可直接於 Excel 篩選任一代碼。")
         col1, col2, col3 = st.columns(3)
         regions = sorted(detail["Regional"].dropna().unique())
         oms = sorted(detail["OM"].dropna().unique())
@@ -138,6 +139,7 @@ def render_nd00_section(per_site: pd.DataFrame, detail: pd.DataFrame):
                 "Planned receiving": "計劃到貨",
                 "Sasa Launch Date": "Sasa 推出日期",
                 "Bucket": "分類",
+                "ND Code": "ND Code",
             }
         )
 

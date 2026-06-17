@@ -29,8 +29,11 @@ def site_summary(df: pd.DataFrame, stores: pd.DataFrame) -> pd.DataFrame:
 
 
 def nd00_analysis(df: pd.DataFrame, stores: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-    mask = df["NDRF Code"].str.strip() == "ND00"
-    nd00 = df[mask].copy()
+    ndrf = df["NDRF Code"].str.strip()
+    # ND00 用於各分店 ND00 警示分佈與圖表
+    nd00 = df[ndrf == "ND00"].copy()
+    # 明細改為涵蓋所有 ND 開頭代碼，方便日後直接於 Excel 篩選任一 ND 代碼
+    nd_all = df[ndrf.str.startswith("ND")].copy()
 
     detail_cols = [
         "SITE",
@@ -43,12 +46,7 @@ def nd00_analysis(df: pd.DataFrame, stores: pd.DataFrame) -> tuple[pd.DataFrame,
         "Sasa Launch Date",
     ]
 
-    if nd00.empty:
-        empty = stores[["Site", "Shop", "Regional", "OM"]].copy()
-        empty.columns = ["SITE", "Shop", "Regional", "OM"]
-        for c in ["Both", "Stock only", "Planned only", "Neither", "Total ND00"]:
-            empty[c] = 0
-        return empty, pd.DataFrame(columns=detail_cols + ["Shop", "Regional", "OM"])
+    meta = stores[["Site", "Shop", "Regional", "OM"]].rename(columns={"Site": "SITE"})
 
     def classify(row):
         has_stock = row["Stock on hand"] > 0
@@ -61,23 +59,33 @@ def nd00_analysis(df: pd.DataFrame, stores: pd.DataFrame) -> tuple[pd.DataFrame,
             return "Planned only"
         return "Neither"
 
-    nd00["Bucket"] = nd00.apply(classify, axis=1)
+    # 各分店 ND00 分佈（僅 ND00）
+    if nd00.empty:
+        per_site = meta.copy()
+        for c in ["Both", "Stock only", "Planned only", "Neither", "Total ND00"]:
+            per_site[c] = 0
+    else:
+        nd00["Bucket"] = nd00.apply(classify, axis=1)
+        per_site = nd00.groupby(["SITE", "Bucket"]).size().unstack(fill_value=0).reset_index()
+        for col in ["Both", "Stock only", "Planned only", "Neither"]:
+            if col not in per_site.columns:
+                per_site[col] = 0
+        per_site["Total ND00"] = per_site[["Both", "Stock only", "Planned only", "Neither"]].sum(axis=1)
+        per_site = meta.merge(per_site, on="SITE", how="left").fillna(0)
 
-    per_site = nd00.groupby(["SITE", "Bucket"]).size().unstack(fill_value=0).reset_index()
-    for col in ["Both", "Stock only", "Planned only", "Neither"]:
-        if col not in per_site.columns:
-            per_site[col] = 0
-    per_site["Total ND00"] = per_site[["Both", "Stock only", "Planned only", "Neither"]].sum(axis=1)
-
-    meta = stores[["Site", "Shop", "Regional", "OM"]].rename(columns={"Site": "SITE"})
-    per_site = meta.merge(per_site, on="SITE", how="left").fillna(0)
     for col in ["Both", "Stock only", "Planned only", "Neither", "Total ND00"]:
         per_site[col] = per_site[col].astype(int)
 
-    detail = nd00[detail_cols].merge(meta, on="SITE", how="left")
-    detail["Bucket"] = nd00["Bucket"].values
-    detail = detail[
-        ["SITE", "Shop", "Regional", "OM", "SKU", "RP Type", "Sasa ABC", "SKU status", "Stock on hand", "Planned receiving", "Sasa Launch Date", "Bucket"]
-    ]
+    # 明細：涵蓋所有 ND 開頭代碼，最後一欄為 ND Code 以便直接篩選
+    if nd_all.empty:
+        detail = pd.DataFrame(columns=detail_cols + ["Shop", "Regional", "OM", "Bucket", "ND Code"])
+    else:
+        nd_all["Bucket"] = nd_all.apply(classify, axis=1)
+        detail = nd_all[detail_cols].merge(meta, on="SITE", how="left")
+        detail["Bucket"] = nd_all["Bucket"].values
+        detail["ND Code"] = nd_all["NDRF Code"].values
+        detail = detail[
+            ["SITE", "Shop", "Regional", "OM", "SKU", "RP Type", "Sasa ABC", "SKU status", "Stock on hand", "Planned receiving", "Sasa Launch Date", "Bucket", "ND Code"]
+        ]
 
     return per_site, detail
