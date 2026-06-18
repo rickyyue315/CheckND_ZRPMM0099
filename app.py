@@ -46,7 +46,13 @@ len_op = len(df_op)
 excluded = len_full - len_op
 excluded_sites = sorted(set(sites_in_txt) - set(stores["Site"].unique()))
 
+sku_before = len(df_op)
+df_op = df_op[df_op["SKU"].astype(str).str.startswith("1")].copy()
+sku_excluded = sku_before - len(df_op)
+
 render_excluded_note(excluded, excluded_sites)
+if sku_excluded > 0:
+    st.sidebar.caption(f"已剔除非 1 字頭 SKU 共 {sku_excluded:,} 行（非銷售產品）")
 
 summary = site_summary(df_op, stores)
 per_site_nd, detail_nd = nd_analysis(df_op, stores)
